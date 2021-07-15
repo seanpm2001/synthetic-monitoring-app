@@ -3,10 +3,17 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 export enum QueryType {
   Probes = 'probes',
   Checks = 'checks',
+  Metric = 'metric',
+}
+
+export enum MetricQuery {
+  Uptime = 'uptime',
+  Reachability = 'reachability',
 }
 
 export interface SMQuery extends DataQuery {
   queryType: QueryType;
+  metric?: MetricQuery;
 }
 
 export const defaultQuery: SMQuery = {

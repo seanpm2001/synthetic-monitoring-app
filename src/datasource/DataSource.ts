@@ -6,12 +6,14 @@ import {
   FieldType,
   ArrayDataFrame,
   DataFrame,
+  rangeUtil,
 } from '@grafana/data';
 
-import { SMQuery, SMOptions, QueryType, CheckInfo } from './types';
+import { SMQuery, SMOptions, QueryType, CheckInfo, MetricQuery } from './types';
 
-import { config, getBackendSrv } from '@grafana/runtime';
+import { config, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 import { Probe, Check, RegistrationInfo, HostedInstance } from '../types';
+import { queryMetric } from 'utils';
 
 export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
   constructor(public instanceSettings: DataSourceInstanceSettings<SMOptions>) {
@@ -46,11 +48,81 @@ export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
           length: checks.length,
         };
 
-        console.log('FRAME', frame.length);
         data.push(copy);
+      } else if (query.queryType === QueryType.Metric) {
+        const metricResponse = await this.handleQueryMetric(query.metric, { ...options, step: 30 });
+        console.log(metricResponse);
+        const frames = metricResponse?.map(({ metric, values }) => ({
+          name: metric.job,
+          fields: [
+            { name: 'Time', type: FieldType.time, values: values.map(([time, value]) => time * 1000) },
+            {
+              name: 'Value',
+              type: FieldType.number,
+              values: values.map(([time, value]) => parseFloat(value)),
+            },
+          ],
+        }));
+        return { data: frames };
+        // const frame = new ArrayDataFrame(metricResponse ?? []);
+        // frame.refId = query.refId;
+        // frame.setFieldType('time', FieldType.time);
+        // data.push(frame);
       }
     }
     return { data };
+  }
+
+  async handleQueryMetric(metricName: MetricQuery | undefined, options: DataQueryRequest<SMQuery>) {
+    switch (metricName) {
+      case MetricQuery.Reachability: {
+        const data = await this.queryPrometheus(
+          `sum(rate(probe_all_success_sum[3h])) by (job, instance) / sum(rate(probe_all_success_count[3h])) by (job, instance)`,
+          options
+        );
+        return data;
+      }
+      case MetricQuery.Uptime: {
+        const range = rangeUtil.secondsToHms(options.range.to.diff(options.range.from) / 1000);
+        const query = `sum_over_time(
+            (
+              ceil(
+                sum by (instance, job) (idelta(probe_all_success_sum[5m]))
+                /
+                sum by (instance, job) (idelta(probe_all_success_count[5m]))
+              )
+            )[${range}:] 
+          )
+          /
+          count_over_time(
+            (
+                sum by (instance, job) (idelta(probe_all_success_count[5m]))
+            )[${range}:]
+          )`;
+
+        const interpolated = getTemplateSrv().replace(query, options.scopedVars);
+        console.log('INTERPOLATED', interpolated);
+        // console.log(options, rangeUtils.timeRangeToRelative(options.range));
+        const data = await this.queryPrometheus(interpolated, options);
+        return data;
+      }
+    }
+  }
+
+  async queryPrometheus(query: string, options: DataQueryRequest<SMQuery>): Promise<any[]> {
+    const prom = this.getMetricsDS();
+    if (!prom.url) {
+      throw new Error('Unable to find prometheus datasource');
+    }
+    const { error, data } = await queryMetric(prom.url, query, {
+      start: options.range.from.unix(),
+      end: options.range.to.unix(),
+      step: 30,
+    });
+    if (error) {
+      throw new Error(error);
+    }
+    return data;
   }
 
   async getCheckInfo(): Promise<CheckInfo> {

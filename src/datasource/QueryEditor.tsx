@@ -2,7 +2,7 @@ import React, { PureComponent } from 'react';
 import { defaults } from 'lodash';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { SMDataSource } from './DataSource';
-import { SMQuery, SMOptions, QueryType, defaultQuery } from './types';
+import { SMQuery, SMOptions, QueryType, defaultQuery, MetricQuery } from './types';
 import { Select } from '@grafana/ui';
 
 type Props = QueryEditorProps<SMDataSource, SMQuery, SMOptions>;
@@ -12,6 +12,7 @@ interface State {}
 const types = [
   { label: 'Probes', value: QueryType.Probes },
   { label: 'Checks', value: QueryType.Checks },
+  { label: 'Metric', value: QueryType.Metric },
 ];
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -37,6 +38,15 @@ export class QueryEditor extends PureComponent<Props, State> {
     onRunQuery();
   };
 
+  onMetricChanged = (item: SelectableValue<MetricQuery>) => {
+    const { onChange, onRunQuery, query } = this.props;
+    onChange({
+      ...query,
+      metric: item.value,
+    });
+    onRunQuery();
+  };
+
   render() {
     const query = defaults(this.props.query, defaultQuery);
 
@@ -47,6 +57,21 @@ export class QueryEditor extends PureComponent<Props, State> {
           value={types.find((t) => t.value === query.queryType)}
           onChange={this.onQueryTypeChanged}
         />
+        {query.queryType === QueryType.Metric && (
+          <Select
+            options={[
+              {
+                label: 'Uptime',
+                value: MetricQuery.Uptime,
+              },
+              {
+                label: 'Reachability',
+                value: MetricQuery.Reachability,
+              },
+            ]}
+            onChange={this.onMetricChanged}
+          />
+        )}
       </div>
     );
   }
