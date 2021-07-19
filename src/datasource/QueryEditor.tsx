@@ -3,7 +3,9 @@ import { defaults } from 'lodash';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { SMDataSource } from './DataSource';
 import { SMQuery, SMOptions, QueryType, defaultQuery, MetricQuery } from './types';
-import { Select } from '@grafana/ui';
+import { HorizontalGroup, Select } from '@grafana/ui';
+import { FeatureFlagContext } from 'contexts/FeatureFlagContext';
+import { FeatureName } from 'types';
 
 type Props = QueryEditorProps<SMDataSource, SMQuery, SMOptions>;
 
@@ -12,10 +14,11 @@ interface State {}
 const types = [
   { label: 'Probes', value: QueryType.Probes },
   { label: 'Checks', value: QueryType.Checks },
-  { label: 'Metric', value: QueryType.Metric },
 ];
 
 export class QueryEditor extends PureComponent<Props, State> {
+  static contextType = FeatureFlagContext;
+
   onComponentDidMount() {}
 
   // onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -48,30 +51,34 @@ export class QueryEditor extends PureComponent<Props, State> {
   };
 
   render() {
+    const { isFeatureEnabled } = this.context;
+    const metricQueries = isFeatureEnabled(FeatureName.MetricQueries);
     const query = defaults(this.props.query, defaultQuery);
 
     return (
       <div className="gf-form">
-        <Select
-          options={types}
-          value={types.find((t) => t.value === query.queryType)}
-          onChange={this.onQueryTypeChanged}
-        />
-        {query.queryType === QueryType.Metric && (
+        <HorizontalGroup style={{ minWidth: '100%' }}>
           <Select
-            options={[
-              {
-                label: 'Uptime',
-                value: MetricQuery.Uptime,
-              },
-              {
-                label: 'Reachability',
-                value: MetricQuery.Reachability,
-              },
-            ]}
-            onChange={this.onMetricChanged}
+            options={metricQueries ? [...types, { label: 'Metric', value: QueryType.Metric }] : types}
+            value={types.find((t) => t.value === query.queryType)}
+            onChange={this.onQueryTypeChanged}
           />
-        )}
+          {query.queryType === QueryType.Metric && (
+            <Select
+              options={[
+                {
+                  label: 'Uptime',
+                  value: MetricQuery.Uptime,
+                },
+                {
+                  label: 'Reachability',
+                  value: MetricQuery.Reachability,
+                },
+              ]}
+              onChange={this.onMetricChanged}
+            />
+          )}
+        </HorizontalGroup>
       </div>
     );
   }

@@ -460,4 +460,5 @@ export enum HTTPCompressionAlgo {
 
 export enum FeatureName {
   UnifiedAlerting = 'ngalert',
+  MetricQueries = 'smmetricqueries',
 }

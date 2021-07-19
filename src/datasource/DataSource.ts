@@ -50,20 +50,27 @@ export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
 
         data.push(copy);
       } else if (query.queryType === QueryType.Metric) {
-        const metricResponse = await this.handleQueryMetric(query.metric, { ...options, step: 30 });
-        console.log(metricResponse);
-        const frames = metricResponse?.map(({ metric, values }) => ({
-          name: metric.job,
-          fields: [
-            { name: 'Time', type: FieldType.time, values: values.map(([time, value]) => time * 1000) },
-            {
-              name: 'Value',
-              type: FieldType.number,
-              values: values.map(([time, value]) => parseFloat(value)),
-            },
-          ],
-        }));
-        return { data: frames };
+        const metricResponse = await this.handleQueryMetric(query.metric, { ...options });
+        const frames = metricResponse?.map<DataFrame>(({ metric, values }) => {
+          return {
+            name: metric.job,
+            fields: [
+              {
+                name: 'Time',
+                type: FieldType.time,
+                values: values.map(([time, _]: [number, string]) => time * 1000),
+                config: {},
+              },
+              {
+                name: 'Value',
+                type: FieldType.number,
+                values: values.map(([_, value]: [number, string]) => parseFloat(value)),
+                config: {},
+              },
+            ],
+          } as DataFrame;
+        });
+        return { data: frames ?? [] };
         // const frame = new ArrayDataFrame(metricResponse ?? []);
         // frame.refId = query.refId;
         // frame.setFieldType('time', FieldType.time);
@@ -74,16 +81,21 @@ export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
   }
 
   async handleQueryMetric(metricName: MetricQuery | undefined, options: DataQueryRequest<SMQuery>) {
+    const secondsDiff = options.range.to.diff(options.range.from) / 1000;
+    const interval = rangeUtil.intervalToSeconds(options.interval);
+    const step = this.adjustInterval(interval, interval, secondsDiff, 1);
+    const range = rangeUtil.secondsToHms(secondsDiff);
+
     switch (metricName) {
       case MetricQuery.Reachability: {
         const data = await this.queryPrometheus(
           `sum(rate(probe_all_success_sum[3h])) by (job, instance) / sum(rate(probe_all_success_count[3h])) by (job, instance)`,
+          step,
           options
         );
         return data;
       }
       case MetricQuery.Uptime: {
-        const range = rangeUtil.secondsToHms(options.range.to.diff(options.range.from) / 1000);
         const query = `sum_over_time(
             (
               ceil(
@@ -101,15 +113,27 @@ export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
           )`;
 
         const interpolated = getTemplateSrv().replace(query, options.scopedVars);
-        console.log('INTERPOLATED', interpolated);
-        // console.log(options, rangeUtils.timeRangeToRelative(options.range));
-        const data = await this.queryPrometheus(interpolated, options);
+        const data = await this.queryPrometheus(interpolated, step, options);
         return data;
       }
+      default:
+        return [];
     }
   }
 
-  async queryPrometheus(query: string, options: DataQueryRequest<SMQuery>): Promise<any[]> {
+  adjustInterval(interval: number, minInterval: number, range: number, intervalFactor: number) {
+    // Prometheus will drop queries that might return more than 11000 data points.
+    // Calculate a safe interval as an additional minimum to take into account.
+    // Fractional safeIntervals are allowed, however serve little purpose if the interval is greater than 1
+    // If this is the case take the ceil of the value.
+    let safeInterval = range / 11000;
+    if (safeInterval > 1) {
+      safeInterval = Math.ceil(safeInterval);
+    }
+    return Math.max(interval * intervalFactor, minInterval, safeInterval);
+  }
+
+  async queryPrometheus(query: string, step: number, options: DataQueryRequest<SMQuery>): Promise<any[]> {
     const prom = this.getMetricsDS();
     if (!prom.url) {
       throw new Error('Unable to find prometheus datasource');
@@ -117,7 +141,7 @@ export class SMDataSource extends DataSourceApi<SMQuery, SMOptions> {
     const { error, data } = await queryMetric(prom.url, query, {
       start: options.range.from.unix(),
       end: options.range.to.unix(),
-      step: 30,
+      step: step ?? 0,
     });
     if (error) {
       throw new Error(error);
