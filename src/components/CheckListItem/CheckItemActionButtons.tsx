@@ -57,7 +57,7 @@ export const CheckItemActionButtons = ({ check, viewDashboardAsIcon, onRemoveChe
       {viewDashboardAsIcon ? (
         <IconButton name="apps" onClick={showDashboard} className={styles.marginRightSmall} />
       ) : (
-        <Button onClick={showDashboard} size="sm" variant="link" className={styles.marginRightExtraSmall}>
+        <Button onClick={showDashboard} size="sm" fill="text" className={styles.marginRightExtraSmall}>
           View dashboard
         </Button>
       )}

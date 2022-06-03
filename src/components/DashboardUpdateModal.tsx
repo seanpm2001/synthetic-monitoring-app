@@ -71,7 +71,7 @@ export const DashboardUpdateModal = () => {
         <p>It looks like your Synthetic Monitoring dashboards need an update.</p>
         <HorizontalGroup>
           <Button onClick={handleUpdateClick}>Update</Button>
-          <Button onClick={skipDashboardUpdate} variant="link">
+          <Button onClick={skipDashboardUpdate} fill="text">
             Skip
           </Button>
         </HorizontalGroup>

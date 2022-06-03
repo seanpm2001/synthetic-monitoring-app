@@ -451,7 +451,7 @@ export const CheckList = ({ instance, checks, onCheckUpdate }: Props) => {
               {selectedChecks.size < filteredChecks.length && (
                 <Button
                   type="button"
-                  variant="link"
+                  fill="text"
                   size="sm"
                   className={styles.marginRightSmall}
                   onClick={toggleAllCheckSelection}
