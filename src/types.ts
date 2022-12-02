@@ -53,6 +53,16 @@ export interface HeaderMatch {
   allowMissing: boolean;
 }
 
+export interface OAuth2Config {
+  clientId: string;
+  clientSecret: string;
+  tokenURL: string;
+  scopes?: string[];
+  endpointParams?: Label[];
+  tlsConfig?: TLSConfig;
+  proxyURL?: string;
+}
+
 export interface TLSConfig {
   insecureSkipVerify: boolean;
   caCert: string;

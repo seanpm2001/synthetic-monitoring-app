@@ -14,6 +14,7 @@ import {
   Checkbox,
   IconButton,
   Button,
+  FieldArray,
 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { useFormContext, Controller, useFieldArray } from 'react-hook-form';
@@ -139,6 +140,7 @@ const generateValidStatusCodes = () => {
 
 const validStatusCodes = generateValidStatusCodes();
 const REGEX_FIELD_NAME = 'settings.http.regexValidations';
+const SCOPES_FIELD_NAME = 'settings.http.scopes';
 
 const getStyles = (theme: GrafanaTheme) => ({
   validationGroup: css`
@@ -190,10 +192,17 @@ export const HttpSettingsForm = ({ isEditor }: Props) => {
 
   const bearerToken = watch('settings.http.bearerToken');
   const basicAuth = watch('settings.http.basicAuth');
+  const oauth2 = watch('settings.http.oauth2');
 
   const [includeBearerToken, setIncludeBearerToken] = useState(Boolean(bearerToken));
   const [includeBasicAuth, setIncludeBasicAuth] = useState(Boolean(basicAuth));
+  const [includeOauth2, setIncludeOauth2] = useState(Boolean(oauth2));
   const { fields, append, remove } = useFieldArray({ control, name: REGEX_FIELD_NAME });
+  const {
+    fields: scopesFields,
+    append: appendScopeField,
+    remove: removeScopeField,
+  } = useFieldArray({ control, name: SCOPES_FIELD_NAME });
   const styles = useStyles(getStyles);
 
   return (
@@ -332,6 +341,73 @@ export const HttpSettingsForm = ({ isEditor }: Props) => {
                 disabled={!isEditor}
               />
             </HorizontalGroup>
+          )}
+        </VerticalGroup>
+        <VerticalGroup spacing="xs">
+          <HorizontalCheckboxField
+            label="Use Oauth2"
+            id="http-settings-oauth2"
+            disabled={!isEditor}
+            className={
+              !includeOauth2
+                ? undefined
+                : css`
+                    margin-bottom: 1px;
+                  `
+            }
+            value={includeOauth2}
+            onChange={() => setIncludeOauth2(!includeOauth2)}
+          />
+          {includeOauth2 && (
+            <VerticalGroup spacing="xs">
+              <Field label="Client ID" description="The client ID of the Oauth client" disabled={!isEditor}>
+                <Input
+                  {...register('settings.http.oauth2.clientId')}
+                  type="text"
+                  placeholder="Client ID"
+                  disabled={!isEditor}
+                />
+              </Field>
+              <Field label="Client secret" description="The client secret of the Oauth client" disabled={!isEditor}>
+                <Input
+                  {...register('settings.http.oauth2.clientSecret')}
+                  type="text"
+                  placeholder="Client secret"
+                  disabled={!isEditor}
+                />
+              </Field>
+              <Field label="Token URL" description="The URL to fetch an Oauth from" disabled={!isEditor}>
+                <Input
+                  {...register('settings.http.oauth2.tokenURL')}
+                  type="text"
+                  placeholder="Token URL"
+                  disabled={!isEditor}
+                />
+              </Field>
+
+              <Field label="Scopes">
+                <div>
+                  {scopesFields.map((_, index) => (
+                    <Input
+                      {...register(`${SCOPES_FIELD_NAME}.${index}.scope`)}
+                      key={index}
+                      type="text"
+                      placeholder="Oauth scope"
+                    />
+                  ))}
+                  <Button onClick={() => scope}>Add scope</Button>
+                  <Button>Remove scope</Button>
+                </div>
+              </Field>
+              <Field label="Client secret" description="The client secret of the Oauth client" disabled={!isEditor}>
+                <Input
+                  {...register('settings.http.oauth2.clientSecret')}
+                  type="text"
+                  placeholder="Client secret"
+                  disabled={!isEditor}
+                />
+              </Field>
+            </VerticalGroup>
           )}
         </VerticalGroup>
       </Collapse>
