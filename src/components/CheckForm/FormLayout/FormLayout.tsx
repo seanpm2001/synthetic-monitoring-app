@@ -31,6 +31,7 @@ type FormSectionProps = {
   children: ReactNode;
   label: string;
   fields?: Array<FieldPath<CheckFormValues>>;
+  supportingContent?: ReactNode;
 };
 
 // return doesn't matter as we take over how this behaves internally
@@ -38,13 +39,21 @@ const FormSection = (props: FormSectionProps) => {
   return props.children;
 };
 
-const FormSectionInternal = ({ children, index, label, fields }: FormSectionProps & { index: number }) => {
+const FormSectionInternal = ({
+  children,
+  index,
+  label,
+  fields,
+  supportingContent,
+}: FormSectionProps & { index: number }) => {
   const isOpen = index === 0;
   const styles = useStyles2(getStyles);
   const {
     state: [sectionState, updateSectionState],
   } = useFormLayoutContext();
-  const { active } = sectionState[index];
+  const state = sectionState[index];
+  const anyNextSectionActive = sectionState.slice(index + 1).some((section) => section.active);
+  const active = state.active || anyNextSectionActive;
   const isLastFormSection = index === sectionState.length - 1;
   const { formState } = useFormContext<CheckFormValues>();
   const relevantErrors = checkForErrors(formState.errors, fields);
@@ -66,11 +75,11 @@ const FormSectionInternal = ({ children, index, label, fields }: FormSectionProp
 
   return (
     <div
-      className={cx(styles.stack, {
-        [styles.container]: !isLastFormSection,
-        [styles.activeContainer]: active,
-        [styles.validContainer]: isValid,
-        [styles.invalidContainer]: hasErrors,
+      className={cx(styles.container, {
+        [styles.toNextSection]: !isLastFormSection,
+        [styles.activeSection]: active,
+        [styles.validSection]: isValid,
+        [styles.invalidSection]: hasErrors,
       })}
     >
       <div
@@ -88,7 +97,14 @@ const FormSectionInternal = ({ children, index, label, fields }: FormSectionProp
           isOpen={isOpen}
           onClick={handleClick}
         >
-          {children}
+          <div className={styles.collapseContent}>
+            <div>{children}</div>
+            {supportingContent && (
+              <div>
+                <div className={styles.supportingContent}>{supportingContent}</div>
+              </div>
+            )}
+          </div>
         </Collapse>
       </div>
     </div>
@@ -119,6 +135,11 @@ const getStyles = (theme: GrafanaTheme2) => {
 
   return {
     container: css({
+      display: `grid`,
+      gridTemplateColumns: `${size}px 1fr`,
+      gap: theme.spacing(2),
+    }),
+    toNextSection: css({
       position: `relative`,
 
       [`&:before`]: {
@@ -131,23 +152,20 @@ const getStyles = (theme: GrafanaTheme2) => {
         backgroundColor: inactiveColor,
       },
     }),
-    activeContainer: css({
+    activeSection: css({
       [`&:before`]: {
         background: activeColor,
       },
     }),
-    validContainer: css({
+    validSection: css({
       [`&:before`]: {
         background: validColor,
       },
     }),
-    invalidContainer: css({
+    invalidSection: css({
       [`&:before`]: {
         background: invalidColor,
       },
-    }),
-    content: css({
-      flex: 1,
     }),
     indicator: css({
       display: `flex`,
@@ -171,9 +189,22 @@ const getStyles = (theme: GrafanaTheme2) => {
     invalidIndicator: css({
       background: invalidColor,
     }),
+    content: css({
+      maxWidth: `1440px`,
+      flex: 1,
+    }),
     stack: css({
       display: 'flex',
       gap: theme.spacing(2),
+    }),
+    collapseContent: css({
+      display: 'grid',
+      gridTemplateColumns: `1fr clamp(300px, 400px, 500px)`,
+      gap: theme.spacing(4),
+    }),
+    supportingContent: css({
+      position: `sticky`,
+      top: theme.spacing(4),
     }),
   };
 };

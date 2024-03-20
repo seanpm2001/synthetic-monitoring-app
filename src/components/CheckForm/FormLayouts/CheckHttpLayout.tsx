@@ -1,7 +1,5 @@
 import React from 'react';
-import { GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
-import { css } from '@emotion/css';
+import { Alert } from '@grafana/ui';
 
 import { CheckFormValuesHttp, CheckType } from 'types';
 import { CheckEnabled } from 'components/CheckEditor/FormComponents/CheckEnabled';
@@ -30,20 +28,22 @@ import { LabelField } from 'components/LabelField';
 import { TLSConfig } from 'components/TLSConfig';
 
 export const CheckHTTPLayout = () => {
-  const styles = useStyles2(getStyles);
-
   return (
     <FormLayout>
       <FormLayout.Section
         label="General settings"
         fields={[`enabled`, `job`, `target`, `probes`, `frequency`, `timeout`]}
+        supportingContent={
+          <>
+            <CheckUsage />
+          </>
+        }
       >
         <CheckEnabled />
         <CheckJobName />
         <CheckTarget checkType={CheckType.HTTP} />
         <ProbeOptions checkType={CheckType.HTTP} />
         <CheckPublishedAdvanceMetrics />
-        <CheckUsage />
       </FormLayout.Section>
       <FormLayout.Section
         label="HTTP settings"
@@ -70,38 +70,37 @@ export const CheckHTTPLayout = () => {
           name="settings.http.proxyConnectHeaders"
         />
       </FormLayout.Section>
-      <FormLayout.Section label="TLS config">
-        <TLSConfig checkType={CheckType.HTTP} />
-      </FormLayout.Section>
       <FormLayout.Section label="Authentication">
         <HttpCheckBearerToken />
         <HttpCheckBasicAuthorization />
       </FormLayout.Section>
+      <FormLayout.Section label="TLS config">
+        <TLSConfig checkType={CheckType.HTTP} />
+      </FormLayout.Section>
       <FormLayout.Section label="Validation">
-        <div className={styles.maxWidth}>
-          <HttpCheckValidStatusCodes />
-          <HttpCheckValidHttpVersions />
-          <HttpCheckSSLOptions />
-        </div>
+        <HttpCheckValidStatusCodes />
+        <HttpCheckValidHttpVersions />
+        <HttpCheckSSLOptions />
         <HttpCheckRegExValidation />
       </FormLayout.Section>
       <FormLayout.Section label="Advanced options">
-        <div className={styles.maxWidth}>
-          <LabelField<CheckFormValuesHttp> />
-          <CheckIpVersion checkType={CheckType.HTTP} name="settings.http.ipVersion" />
-          <HttpCheckFollowRedirects />
-          <HttpCheckCacheBuster />
-        </div>
+        <LabelField<CheckFormValuesHttp> />
+        <CheckIpVersion checkType={CheckType.HTTP} name="settings.http.ipVersion" />
+        <HttpCheckFollowRedirects />
+        <HttpCheckCacheBuster />
       </FormLayout.Section>
-      <FormLayout.Section label="Alerting">
+      <FormLayout.Section
+        label="Alerting"
+        supportingContent={
+          <>
+            <Alert severity="info" title="Tip">
+              Adding multiple probes can help to prevent alert flapping for less frequent checks.
+            </Alert>
+          </>
+        }
+      >
         <CheckFormAlert />
       </FormLayout.Section>
     </FormLayout>
   );
 };
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  maxWidth: css({
-    maxWidth: `500px`,
-  }),
-});

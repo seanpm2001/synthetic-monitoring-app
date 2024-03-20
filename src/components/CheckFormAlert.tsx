@@ -31,7 +31,6 @@ export const CheckFormAlert = () => {
             alerts tab.
           </a>
         </p>
-        <p>Tip: adding multiple probes can help to prevent alert flapping for less frequent checks</p>
       </div>
       <Field label="Select alert sensitivity">
         <Controller<CheckFormValues>
