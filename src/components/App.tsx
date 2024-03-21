@@ -5,6 +5,7 @@ import { AppRootProps } from '@grafana/data';
 import { css, Global } from '@emotion/react';
 
 import { GlobalSettings } from 'types';
+import { BestPracticeGlobalContextProvider } from 'contexts/BestPractice/BestPracticeGlobalContext';
 import { queryClient } from 'data/queryClient';
 import { queryKeys as alertingQueryKeys } from 'data/useAlerts';
 import { DashboardUpdateModal } from 'components/DashboardUpdateModal';
@@ -30,18 +31,20 @@ export const App = (props: AppProps) => {
 
   return (
     <FeatureFlagProvider>
-      <GlobalStyles />
-      <InstanceProvider
-        metricInstanceName={meta.jsonData?.metrics?.grafanaName}
-        logsInstanceName={meta.jsonData?.logs?.grafanaName}
-        meta={meta}
-      >
-        <QueryClientProvider client={queryClient}>
-          <Routing {...props} />
-          <DashboardUpdateModal />
-          <ReactQueryDevtools />
-        </QueryClientProvider>
-      </InstanceProvider>
+      <BestPracticeGlobalContextProvider>
+        <GlobalStyles />
+        <InstanceProvider
+          metricInstanceName={meta.jsonData?.metrics?.grafanaName}
+          logsInstanceName={meta.jsonData?.logs?.grafanaName}
+          meta={meta}
+        >
+          <QueryClientProvider client={queryClient}>
+            <Routing {...props} />
+            <DashboardUpdateModal />
+            <ReactQueryDevtools />
+          </QueryClientProvider>
+        </InstanceProvider>
+      </BestPracticeGlobalContextProvider>
     </FeatureFlagProvider>
   );
 };

@@ -5,12 +5,17 @@ import { Field, Select, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 
 import { CheckFormValues } from 'types';
+import { BestPracticeID } from 'contexts/BestPractice/bestPractice.types';
+import { BestPracticeAlert } from 'contexts/BestPractice/BestPracticeAlert';
+import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 
+import { getCheckFromFormValues } from './CheckEditor/checkFormTransformations';
 import { ALERT_SENSITIVITY_OPTIONS } from './constants';
 
 export const CheckFormAlert = () => {
+  const { validate } = useCheckFormBestPractice();
   const styles = useStyles2(getStyles);
-  const { watch } = useFormContext<CheckFormValues>();
+  const { getValues, watch } = useFormContext<CheckFormValues>();
   const alertSensitivity = watch('alertSensitivity');
 
   const isCustomSensitivity = !Boolean(ALERT_SENSITIVITY_OPTIONS.find((option) => option.value === alertSensitivity));
@@ -49,6 +54,7 @@ export const CheckFormAlert = () => {
                     : ALERT_SENSITIVITY_OPTIONS
                 }
                 onChange={(e) => {
+                  validate(getCheckFromFormValues({ ...getValues(), alertSensitivity: e.value }));
                   field.onChange(e.value);
                 }}
               />
@@ -56,6 +62,7 @@ export const CheckFormAlert = () => {
           }}
         />
       </Field>
+      <BestPracticeAlert id={BestPracticeID.SET_ALERTING_RULES} />
     </>
   );
 };

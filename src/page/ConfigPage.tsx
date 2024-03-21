@@ -3,6 +3,7 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { Container, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 
+import { ConfigureBestPractices } from 'contexts/BestPractice/ConfigureBestPractices';
 import { InstanceContext } from 'contexts/InstanceContext';
 import { BackendAddress } from 'components/BackendAddress';
 import { ConfigActions } from 'components/ConfigActions';
@@ -82,6 +83,9 @@ export function ConfigPage() {
         <div className={styles.configActions}>
           <hr></hr>
           <ConfigActions enabled={meta?.enabled} pluginId={meta?.id ?? 'grafana-synthetic-monitoring-app'} />
+        </div>
+        <div>
+          <ConfigureBestPractices />
         </div>
         <div>Plugin version: {meta?.info.version}</div>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert } from '@grafana/ui';
 
+// import { Alert } from '@grafana/ui';
 import { CheckFormValuesHttp, CheckType } from 'types';
 import { CheckEnabled } from 'components/CheckEditor/FormComponents/CheckEnabled';
 import { CheckIpVersion } from 'components/CheckEditor/FormComponents/CheckIpVersion';
@@ -24,6 +24,7 @@ import { ProbeOptions } from 'components/CheckEditor/ProbeOptions';
 import { FormLayout } from 'components/CheckForm/FormLayout/FormLayout';
 import { CheckFormAlert } from 'components/CheckFormAlert';
 import { CheckUsage } from 'components/CheckUsage';
+import { DocsLink } from 'components/DocsLink';
 import { LabelField } from 'components/LabelField';
 import { TLSConfig } from 'components/TLSConfig';
 
@@ -36,6 +37,7 @@ export const CheckHTTPLayout = () => {
         supportingContent={
           <>
             <CheckUsage />
+            <DocsLink article="probes">Learn more about general settings</DocsLink>
           </>
         }
       >
@@ -54,6 +56,7 @@ export const CheckHTTPLayout = () => {
           `settings.http.compression`,
           `settings.http.proxyConnectHeaders`,
         ]}
+        supportingContent={<DocsLink article="probes">Learn more about http settings options</DocsLink>}
       >
         <RequestMethodSelect name="settings.http.method" />
         <RequestBodyTextArea name="settings.http.body" />
@@ -70,20 +73,32 @@ export const CheckHTTPLayout = () => {
           name="settings.http.proxyConnectHeaders"
         />
       </FormLayout.Section>
-      <FormLayout.Section label="Authentication">
+      <FormLayout.Section
+        label="Authentication"
+        supportingContent={<DocsLink article="probes">Learn more about authentication options</DocsLink>}
+      >
         <HttpCheckBearerToken />
         <HttpCheckBasicAuthorization />
       </FormLayout.Section>
-      <FormLayout.Section label="TLS config">
+      <FormLayout.Section
+        label="TLS config"
+        supportingContent={<DocsLink article="probes">Learn more about TLS config options</DocsLink>}
+      >
         <TLSConfig checkType={CheckType.HTTP} />
       </FormLayout.Section>
-      <FormLayout.Section label="Validation">
+      <FormLayout.Section
+        label="Validation"
+        supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
+      >
         <HttpCheckValidStatusCodes />
         <HttpCheckValidHttpVersions />
         <HttpCheckSSLOptions />
         <HttpCheckRegExValidation />
       </FormLayout.Section>
-      <FormLayout.Section label="Advanced options">
+      <FormLayout.Section
+        label="Advanced options"
+        supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
+      >
         <LabelField<CheckFormValuesHttp> />
         <CheckIpVersion checkType={CheckType.HTTP} name="settings.http.ipVersion" />
         <HttpCheckFollowRedirects />
@@ -91,11 +106,13 @@ export const CheckHTTPLayout = () => {
       </FormLayout.Section>
       <FormLayout.Section
         label="Alerting"
+        fields={[`alertSensitivity`]}
         supportingContent={
           <>
-            <Alert severity="info" title="Tip">
+            <DocsLink article="probes">Learn more about alerting sensitivity settings.</DocsLink>
+            {/* <Alert severity="info" title="Tip">
               Adding multiple probes can help to prevent alert flapping for less frequent checks.
-            </Alert>
+            </Alert> */}
           </>
         }
       >

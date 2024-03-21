@@ -6,10 +6,14 @@ import { Field, Input } from '@grafana/ui';
 import { CheckFormValues, CheckType } from 'types';
 import { hasRole } from 'utils';
 import { validateFrequency, validateProbes, validateTimeout } from 'validation';
+import { BestPracticeID } from 'contexts/BestPractice/bestPractice.types';
+import { BestPracticeAlert } from 'contexts/BestPractice/BestPracticeAlert';
 import { useProbes } from 'data/useProbes';
+import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 import { SliderInput } from 'components/SliderInput';
 import { Subheader } from 'components/Subheader';
 
+import { getCheckFromFormValues } from './checkFormTransformations';
 import CheckProbes from './CheckProbes';
 
 interface Props {
@@ -62,6 +66,7 @@ function getTimeoutBounds(checkType: CheckType) {
 }
 
 export const ProbeOptions = ({ checkType }: Props) => {
+  const { validate } = useCheckFormBestPractice();
   const { data: probes = [] } = useProbes();
   const {
     control,
@@ -85,17 +90,27 @@ export const ProbeOptions = ({ checkType }: Props) => {
         control={control}
         name="probes"
         rules={{ validate: validateProbes }}
-        render={({ field }) => (
-          <CheckProbes
-            {...field}
-            probes={field.value}
-            availableProbes={probes}
-            isEditor={isEditor}
-            invalid={Boolean(errors.probes)}
-            error={errors.probes?.message}
-          />
-        )}
+        render={({ field }) => {
+          const { onChange, ref, ...rest } = field;
+          const handleChange = (probes: number[]) => {
+            onChange(probes);
+            validate(getCheckFromFormValues({ ...getValues(), probes }), false);
+          };
+
+          return (
+            <CheckProbes
+              {...rest}
+              onChange={handleChange}
+              probes={field.value}
+              availableProbes={probes}
+              isEditor={isEditor}
+              invalid={Boolean(errors.probes)}
+              error={errors.probes?.message}
+            />
+          );
+        }}
       />
+      <BestPracticeAlert id={BestPracticeID.MORE_THAN_ONE_PROBE} />
       <Field
         label="Frequency"
         description="How frequently the check should run."

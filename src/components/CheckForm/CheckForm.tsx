@@ -7,7 +7,9 @@ import { css } from '@emotion/css';
 
 import { Check, CheckFormValues, CheckPageParams, CheckType, ROUTES } from 'types';
 import { hasRole } from 'utils';
+import { BestPracticeLocalContextProvider } from 'contexts/BestPractice/BestPracticeLocalContext';
 import { useChecks, useCUDChecks } from 'data/useChecks';
+import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 import { useNavigation } from 'hooks/useNavigation';
 import { getCheckFromFormValues, getFormValuesFromCheck } from 'components/CheckEditor/checkFormTransformations';
 import { PROBES_SELECT_ID } from 'components/CheckEditor/CheckProbes';
@@ -37,7 +39,11 @@ export const CheckForm = () => {
 
   const check = checks?.find((c) => c.id === Number(id)) ?? fallbackCheckMap[checkType];
 
-  return <CheckFormContent check={check} checkType={checkType} />;
+  return (
+    <BestPracticeLocalContextProvider>
+      <CheckFormContent check={check} checkType={checkType} />
+    </BestPracticeLocalContextProvider>
+  );
 };
 
 type CheckFormContentProps = {
@@ -46,6 +52,7 @@ type CheckFormContentProps = {
 };
 
 const CheckFormContent = ({ check, checkType }: CheckFormContentProps) => {
+  const { warnings, validate } = useCheckFormBestPractice();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const styles = useStyles2(getStyles);
   const { adhocTestData, closeModal, isPending, openTestCheckModal, testCheck, testCheckError } =
@@ -64,6 +71,7 @@ const CheckFormContent = ({ check, checkType }: CheckFormContentProps) => {
   const navigateBack = () => navigate(ROUTES.Checks);
   const onSuccess = () => navigateBack();
   const testRef = useRef<HTMLButtonElement>(null);
+  const ignoreRef = useRef<HTMLButtonElement>(null);
 
   const handleSubmit = (checkValues: CheckFormValues, event: BaseSyntheticEvent | undefined) => {
     // react-hook-form doesn't let us provide SubmitEvent to BaseSyntheticEvent
@@ -74,7 +82,13 @@ const CheckFormContent = ({ check, checkType }: CheckFormContentProps) => {
       return testCheck(toSubmit);
     }
 
-    mutateCheck(toSubmit);
+    if (submitter === ignoreRef.current) {
+      return mutateCheck(toSubmit);
+    }
+
+    if (validate(toSubmit, true)) {
+      mutateCheck(toSubmit);
+    }
   };
 
   const mutateCheck = (newCheck: Check) => {
@@ -119,36 +133,57 @@ const CheckFormContent = ({ check, checkType }: CheckFormContentProps) => {
         <FormProvider {...formMethods}>
           <form onSubmit={formMethods.handleSubmit(handleSubmit, handleError)}>
             <CheckSelector checkType={checkType} />
-            <HorizontalGroup>
-              <Button type="submit" disabled={formMethods.formState.isSubmitting || submitting}>
-                Save
-              </Button>
-              {![CheckType.Traceroute].includes(checkType) && (
+            <div className={styles.breakLine}>
+              <HorizontalGroup>
                 <Button
-                  disabled={isPending}
                   type="submit"
-                  variant="secondary"
-                  icon={isPending ? `fa fa-spinner` : undefined}
-                  ref={testRef}
+                  disabled={formMethods.formState.isSubmitting || submitting || warnings.length > 0}
                 >
-                  Test
+                  Save
                 </Button>
-              )}
-              {check?.id && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setShowDeleteModal(true)}
-                  disabled={!isEditor}
-                  type="button"
-                >
-                  Delete Check
-                </Button>
-              )}
+                {![CheckType.Traceroute].includes(checkType) && (
+                  <Button
+                    disabled={isPending}
+                    type="submit"
+                    variant="secondary"
+                    icon={isPending ? `fa fa-spinner` : undefined}
+                    ref={testRef}
+                  >
+                    Test
+                  </Button>
+                )}
+                {check?.id && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={!isEditor}
+                    type="button"
+                  >
+                    Delete Check
+                  </Button>
+                )}
 
-              <LinkButton href={getRoute(ROUTES.Checks)} fill="text" variant="secondary">
-                Cancel
-              </LinkButton>
-            </HorizontalGroup>
+                <LinkButton href={getRoute(ROUTES.Checks)} fill="text" variant="secondary">
+                  Cancel
+                </LinkButton>
+              </HorizontalGroup>
+            </div>
+            {warnings.length > 0 && (
+              <div className={styles.submissionError}>
+                <Alert title="Best practice warnings" severity="warning">
+                  <p>You have some best practice warnings. Review and correct or save anyway.</p>
+                  <Button
+                    variant="secondary"
+                    type="submit"
+                    ref={ignoreRef}
+                    disabled={isPending}
+                    icon={isPending ? `fa fa-spinner` : undefined}
+                  >
+                    Save anyway
+                  </Button>
+                </Alert>
+              </div>
+            )}
           </form>
         </FormProvider>
       </>
@@ -265,6 +300,7 @@ const getStyles = (theme: GrafanaTheme2) => ({
     marginTop: theme.spacing(3),
   }),
   submissionError: css({
+    maxWidth: `600px`,
     marginTop: theme.spacing(2),
   }),
 });

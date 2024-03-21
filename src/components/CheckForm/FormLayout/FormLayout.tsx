@@ -6,6 +6,9 @@ import { css, cx } from '@emotion/css';
 import { flatten } from 'flat';
 
 import { CheckFormValues } from 'types';
+import { WARNING_TO_FIELD_MAP } from 'contexts/BestPractice/bestPractice.constants';
+import { BestPracticeID } from 'contexts/BestPractice/bestPractice.types';
+import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 import { Collapse } from 'components/Collapse';
 import { CollapseLabel } from 'components/CollapseLabel';
 
@@ -46,6 +49,7 @@ const FormSectionInternal = ({
   fields,
   supportingContent,
 }: FormSectionProps & { index: number }) => {
+  const { warnings } = useCheckFormBestPractice();
   const isOpen = index === 0;
   const styles = useStyles2(getStyles);
   const {
@@ -58,6 +62,10 @@ const FormSectionInternal = ({
   const { formState } = useFormContext<CheckFormValues>();
   const relevantErrors = checkForErrors(formState.errors, fields);
   const hasErrors = relevantErrors.length > 0;
+
+  const relevantWarnings = checkForWarnings(warnings, fields);
+  const hasWarnings = relevantWarnings.length > 0;
+
   const showValidation = formState.isSubmitted;
   const isValid = showValidation && !hasErrors;
 
@@ -79,6 +87,7 @@ const FormSectionInternal = ({
         [styles.toNextSection]: !isLastFormSection,
         [styles.activeSection]: active,
         [styles.validSection]: isValid,
+        [styles.warningSection]: hasWarnings,
         [styles.invalidSection]: hasErrors,
       })}
     >
@@ -86,6 +95,7 @@ const FormSectionInternal = ({
         className={cx(styles.indicator, {
           [styles.activeIndicator]: active,
           [styles.validIndicator]: isValid,
+          [styles.warningIndicator]: hasWarnings,
           [styles.invalidIndicator]: hasErrors,
         })}
       >
@@ -93,12 +103,14 @@ const FormSectionInternal = ({
       </div>
       <div className={styles.content}>
         <Collapse
-          label={<CollapseLabel label={label} icon={hasErrors ? `exclamation-triangle` : undefined} />}
+          label={<CollapseLabel label={label} icon={hasErrors || hasWarnings ? `exclamation-triangle` : undefined} />}
           isOpen={isOpen}
           onClick={handleClick}
         >
           <div className={styles.collapseContent}>
-            <div>{children}</div>
+            <div>
+              <div className={styles.primaryContent}>{children}</div>
+            </div>
             {supportingContent && (
               <div>
                 <div className={styles.supportingContent}>{supportingContent}</div>
@@ -125,6 +137,10 @@ function checkForErrors(errors: FieldErrors<CheckFormValues>, fields: Array<Fiel
   return relevantErrors;
 }
 
+function checkForWarnings(warnings: BestPracticeID[], fields: Array<FieldPath<CheckFormValues>> = []) {
+  return warnings.filter((warning) => WARNING_TO_FIELD_MAP[warning].some((field) => fields.includes(field)));
+}
+
 const getStyles = (theme: GrafanaTheme2) => {
   const fontSize = 16;
   const size = fontSize + 16;
@@ -132,6 +148,8 @@ const getStyles = (theme: GrafanaTheme2) => {
   const activeColor = theme.colors.info.shade;
   const invalidColor = theme.colors.error.main;
   const validColor = theme.colors.success.main;
+  // @ts-expect-error -- available in runtime version of @grafana/ui
+  const warningColor = theme.colors.warning.borderTransparent;
 
   return {
     container: css({
@@ -145,10 +163,10 @@ const getStyles = (theme: GrafanaTheme2) => {
       [`&:before`]: {
         content: `''`,
         position: `absolute`,
-        top: size / 2,
+        top: `46px`, // why 46?
         left: size / 2,
         width: `2px`,
-        height: `100%`,
+        height: `calc(100% - ${size}px)`,
         backgroundColor: inactiveColor,
       },
     }),
@@ -165,6 +183,11 @@ const getStyles = (theme: GrafanaTheme2) => {
     invalidSection: css({
       [`&:before`]: {
         background: invalidColor,
+      },
+    }),
+    warningSection: css({
+      [`&:before`]: {
+        background: warningColor,
       },
     }),
     indicator: css({
@@ -189,6 +212,9 @@ const getStyles = (theme: GrafanaTheme2) => {
     invalidIndicator: css({
       background: invalidColor,
     }),
+    warningIndicator: css({
+      background: warningColor,
+    }),
     content: css({
       maxWidth: `1440px`,
       flex: 1,
@@ -201,6 +227,9 @@ const getStyles = (theme: GrafanaTheme2) => {
       display: 'grid',
       gridTemplateColumns: `1fr clamp(300px, 400px, 500px)`,
       gap: theme.spacing(4),
+    }),
+    primaryContent: css({
+      maxWidth: `600px`,
     }),
     supportingContent: css({
       position: `sticky`,
