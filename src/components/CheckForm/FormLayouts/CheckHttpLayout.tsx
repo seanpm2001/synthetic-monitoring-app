@@ -1,6 +1,5 @@
 import React from 'react';
 
-// import { Alert } from '@grafana/ui';
 import { CheckFormValuesHttp, CheckType } from 'types';
 import { CheckEnabled } from 'components/CheckEditor/FormComponents/CheckEnabled';
 import { CheckIpVersion } from 'components/CheckEditor/FormComponents/CheckIpVersion';
@@ -110,9 +109,6 @@ export const CheckHTTPLayout = () => {
         supportingContent={
           <>
             <DocsLink article="probes">Learn more about alerting sensitivity settings.</DocsLink>
-            {/* <Alert severity="info" title="Tip">
-              Adding multiple probes can help to prevent alert flapping for less frequent checks.
-            </Alert> */}
           </>
         }
       >
