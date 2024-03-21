@@ -4,7 +4,7 @@ import { GrafanaTheme2 } from '@grafana/data';
 import { Field, Select, useStyles2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 
-import { CheckFormValues } from 'types';
+import { AlertSensitivity, CheckFormValues } from 'types';
 import { BestPracticeID } from 'contexts/BestPractice/bestPractice.types';
 import { BestPracticeAlert } from 'contexts/BestPractice/BestPracticeAlert';
 import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
@@ -15,7 +15,7 @@ import { ALERT_SENSITIVITY_OPTIONS } from './constants';
 export const CheckFormAlert = () => {
   const { validate } = useCheckFormBestPractice();
   const styles = useStyles2(getStyles);
-  const { getValues, watch } = useFormContext<CheckFormValues>();
+  const { control, getValues, watch } = useFormContext<CheckFormValues>();
   const alertSensitivity = watch('alertSensitivity');
 
   const isCustomSensitivity = !Boolean(ALERT_SENSITIVITY_OPTIONS.find((option) => option.value === alertSensitivity));
@@ -38,7 +38,8 @@ export const CheckFormAlert = () => {
         </p>
       </div>
       <Field label="Select alert sensitivity">
-        <Controller<CheckFormValues>
+        <Controller
+          control={control}
           name="alertSensitivity"
           render={({ field }) => {
             const { ref, ...rest } = field;
@@ -54,7 +55,8 @@ export const CheckFormAlert = () => {
                     : ALERT_SENSITIVITY_OPTIONS
                 }
                 onChange={(e) => {
-                  validate(getCheckFromFormValues({ ...getValues(), alertSensitivity: e.value }));
+                  const alertSensitivity = e.value as AlertSensitivity; // TODO: Fix type
+                  validate(getCheckFromFormValues({ ...getValues(), alertSensitivity }));
                   field.onChange(e.value);
                 }}
               />

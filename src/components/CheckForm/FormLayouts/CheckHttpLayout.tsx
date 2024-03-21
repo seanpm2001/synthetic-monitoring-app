@@ -73,8 +73,21 @@ export const CheckHTTPLayout = () => {
         />
       </FormLayout.Section>
       <FormLayout.Section
-        label="Authentication"
+        label="TLS config"
         supportingContent={<DocsLink article="probes">Learn more about authentication options</DocsLink>}
+        fields={[
+          `settings.http.tlsConfig.caCert`,
+          `settings.http.tlsConfig.clientCert`,
+          `settings.http.tlsConfig.clientKey`,
+          `settings.http.tlsConfig.insecureSkipVerify`,
+          `settings.http.tlsConfig.serverName`,
+        ]}
+      >
+        <TLSConfig checkType={CheckType.HTTP} />
+      </FormLayout.Section>
+      <FormLayout.Section
+        label="Authentication"
+        fields={[`settings.http.bearerToken`, `settings.http.basicAuth.password`, `settings.http.basicAuth.username`]}
       >
         <HttpCheckBearerToken />
         <HttpCheckBasicAuthorization />
@@ -88,6 +101,7 @@ export const CheckHTTPLayout = () => {
       <FormLayout.Section
         label="Validation"
         supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
+        fields={[`settings.http.validStatusCodes`, `settings.http.validHTTPVersions`, `settings.http.sslOptions`]}
       >
         <HttpCheckValidStatusCodes />
         <HttpCheckValidHttpVersions />
@@ -97,6 +111,12 @@ export const CheckHTTPLayout = () => {
       <FormLayout.Section
         label="Advanced options"
         supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
+        fields={[
+          `labels`,
+          `settings.http.ipVersion`,
+          `settings.http.followRedirects`,
+          `settings.http.cacheBustingQueryParamName`,
+        ]}
       >
         <LabelField<CheckFormValuesHttp> />
         <CheckIpVersion checkType={CheckType.HTTP} name="settings.http.ipVersion" />
