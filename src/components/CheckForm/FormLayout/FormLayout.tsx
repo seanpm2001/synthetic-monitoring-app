@@ -1,7 +1,7 @@
-import React, { Children, isValidElement, ReactNode, useCallback } from 'react';
+import React, { Children, isValidElement, ReactNode } from 'react';
 import { FieldErrors, FieldPath, useFormContext } from 'react-hook-form';
 import { GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
+import { useStyles2, useTheme2 } from '@grafana/ui';
 import { css, cx } from '@emotion/css';
 import { flatten } from 'flat';
 
@@ -12,29 +12,34 @@ import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 import { Collapse } from 'components/Collapse';
 import { CollapseLabel } from 'components/CollapseLabel';
 
-import { FormLayoutContextProvider, useFormLayoutContext } from './useFormLayoutContext';
-
 type FormLayoutProps = {
   children: ReactNode;
 };
 
 export const FormLayout = ({ children }: FormLayoutProps) => {
-  return (
-    <FormLayoutContextProvider>
-      {Children.map(children, (child, index) => {
-        return isValidElement(child) && child.type === FormSection ? (
-          <FormSectionInternal {...child.props} index={index} />
-        ) : null;
-      })}
-    </FormLayoutContextProvider>
-  );
+  let index = -1;
+
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) {
+      return null;
+    }
+
+    if (child.type === FormSection) {
+      index++;
+
+      return <FormSectionInternal {...child.props} index={index} />;
+    }
+
+    return child;
+  });
 };
 
 type FormSectionProps = {
   children: ReactNode;
+  contentClassName?: string;
   label: string;
   fields?: Array<FieldPath<CheckFormValues>>;
-  supportingContent?: ReactNode;
+  isOpen?: boolean;
 };
 
 // return doesn't matter as we take over how this behaves internally
@@ -44,79 +49,36 @@ const FormSection = (props: FormSectionProps) => {
 
 const FormSectionInternal = ({
   children,
+  contentClassName,
   index,
   label,
   fields,
-  supportingContent,
+  isOpen,
 }: FormSectionProps & { index: number }) => {
+  const iternalIsOpen = index === 0 || isOpen;
   const { warnings } = useCheckFormBestPractice();
-  const isOpen = index === 0;
   const styles = useStyles2(getStyles);
-  const {
-    state: [sectionState, updateSectionState],
-  } = useFormLayoutContext();
-  const state = sectionState[index];
-  const anyNextSectionActive = sectionState.slice(index + 1).some((section) => section.active);
-  const active = state.active || anyNextSectionActive;
-  const isLastFormSection = index === sectionState.length - 1;
   const { formState } = useFormContext<CheckFormValues>();
   const relevantErrors = checkForErrors(formState.errors, fields);
   const hasErrors = relevantErrors.length > 0;
-
+  const theme = useTheme2();
   const relevantWarnings = checkForWarnings(warnings, fields);
   const hasWarnings = relevantWarnings.length > 0;
 
-  const showValidation = formState.isSubmitted;
-  const isValid = showValidation && !hasErrors;
-
-  const handleClick = useCallback(
-    (isActive: boolean) => {
-      updateSectionState({
-        index,
-        state: {
-          active: isActive,
-        },
-      });
-    },
-    [index, updateSectionState]
-  );
-
   return (
-    <div
-      className={cx(styles.container, {
-        [styles.toNextSection]: !isLastFormSection,
-        [styles.activeSection]: active,
-        [styles.validSection]: isValid,
-        [styles.warningSection]: hasWarnings,
-        [styles.invalidSection]: hasErrors,
-      })}
-    >
-      <div
-        className={cx(styles.indicator, {
-          [styles.activeIndicator]: active,
-          [styles.validIndicator]: isValid,
-          [styles.warningIndicator]: hasWarnings,
-          [styles.invalidIndicator]: hasErrors,
-        })}
-      >
-        {index + 1}
-      </div>
-      <div className={styles.content}>
+    <div className={styles.stack}>
+      <div className={styles.main}>
         <Collapse
-          label={<CollapseLabel label={label} icon={hasErrors || hasWarnings ? `exclamation-triangle` : undefined} />}
-          isOpen={isOpen}
-          onClick={handleClick}
+          label={
+            <CollapseLabel
+              label={label}
+              icon={hasErrors || hasWarnings ? `exclamation-triangle` : undefined}
+              iconColor={theme.colors.error.text}
+            />
+          }
+          isOpen={iternalIsOpen}
         >
-          <div className={styles.collapseContent}>
-            <div>
-              <div className={styles.primaryContent}>{children}</div>
-            </div>
-            {supportingContent && (
-              <div>
-                <div className={styles.supportingContent}>{supportingContent}</div>
-              </div>
-            )}
-          </div>
+          <div className={cx(styles.content, contentClassName)}>{children}</div>
         </Collapse>
       </div>
     </div>
@@ -137,105 +99,23 @@ function checkForErrors(errors: FieldErrors<CheckFormValues>, fields: Array<Fiel
   return relevantErrors;
 }
 
-function checkForWarnings(warnings: BestPracticeID[], fields: Array<FieldPath<CheckFormValues>> = []) {
-  return warnings.filter((warning) => WARNING_TO_FIELD_MAP[warning].some((field) => fields.includes(field)));
-}
-
 const getStyles = (theme: GrafanaTheme2) => {
-  const fontSize = 16;
-  const size = fontSize + 16;
-  const inactiveColor = theme.colors.background.secondary;
-  const activeColor = theme.colors.info.shade;
-  const invalidColor = theme.colors.error.main;
-  const validColor = theme.colors.success.main;
-  // @ts-expect-error -- available in runtime version of @grafana/ui
-  const warningColor = theme.colors.warning.borderTransparent;
-
   return {
-    container: css({
-      display: `grid`,
-      gridTemplateColumns: `${size}px 1fr`,
-      gap: theme.spacing(2),
-    }),
-    toNextSection: css({
-      position: `relative`,
-
-      [`&:before`]: {
-        content: `''`,
-        position: `absolute`,
-        top: `46px`, // why 46?
-        left: size / 2,
-        width: `2px`,
-        height: `calc(100% - ${size}px)`,
-        backgroundColor: inactiveColor,
-      },
-    }),
-    activeSection: css({
-      [`&:before`]: {
-        background: activeColor,
-      },
-    }),
-    validSection: css({
-      [`&:before`]: {
-        background: validColor,
-      },
-    }),
-    invalidSection: css({
-      [`&:before`]: {
-        background: invalidColor,
-      },
-    }),
-    warningSection: css({
-      [`&:before`]: {
-        background: warningColor,
-      },
-    }),
-    indicator: css({
-      display: `flex`,
-      alignItems: `center`,
-      justifyContent: `center`,
-      width: size,
-      height: size,
-      borderRadius: `50%`,
-      backgroundColor: inactiveColor,
-      fontSize,
-      transform: `translateY(-50%)`,
-      top: `30px`,
-      position: `relative`,
-    }),
-    activeIndicator: css({
-      background: activeColor,
-    }),
-    validIndicator: css({
-      background: validColor,
-    }),
-    invalidIndicator: css({
-      background: invalidColor,
-    }),
-    warningIndicator: css({
-      background: warningColor,
+    main: css({
+      flex: 1,
     }),
     content: css({
-      maxWidth: `1440px`,
-      flex: 1,
+      maxWidth: `600px`,
     }),
     stack: css({
       display: 'flex',
       gap: theme.spacing(2),
     }),
-    collapseContent: css({
-      display: 'grid',
-      gridTemplateColumns: `1fr clamp(300px, 400px, 500px)`,
-      gap: theme.spacing(4),
-    }),
-    primaryContent: css({
-      maxWidth: `600px`,
-    }),
-    supportingContent: css({
-      position: `sticky`,
-      top: theme.spacing(4),
-    }),
   };
 };
+
+function checkForWarnings(warnings: BestPracticeID[], fields: Array<FieldPath<CheckFormValues>> = []) {
+  return warnings.filter((warning) => WARNING_TO_FIELD_MAP[warning].some((field) => fields.includes(field)));
+}
 
 FormLayout.Section = FormSection;

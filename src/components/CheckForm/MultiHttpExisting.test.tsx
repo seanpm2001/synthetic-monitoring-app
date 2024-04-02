@@ -35,8 +35,14 @@ describe('editing multihttp check', () => {
     expect(await screen.findByLabelText('Job name', { exact: false })).toHaveValue(targetCheck.job);
     // this is checking for the name of the probe
     expect(await screen.findByText(PRIVATE_PROBE.name)).toBeInTheDocument();
-    expect(await getSlider('frequency')).toHaveValue((targetCheck.frequency / 1000).toString());
-    expect(await getSlider('timeout')).toHaveValue((targetCheck.timeout / 1000).toString());
+
+    const [frequencyMinutes, frequencySeconds] = await getSlider('frequency');
+    expect(frequencyMinutes).toHaveValue(Math.floor(targetCheck.frequency / 1000 / 60).toString());
+    expect(frequencySeconds).toHaveValue(((targetCheck.frequency / 1000) % 60).toString());
+
+    const [timeoutMinutes, timeoutSeconds] = await getSlider('timeout');
+    expect(timeoutMinutes).toHaveValue(Math.floor(targetCheck.timeout / 1000 / 60).toString());
+    expect(timeoutSeconds).toHaveValue(((targetCheck.timeout / 1000) % 60).toString());
 
     // labels
     const labelNameInput = await screen.findByTestId('label-name-0');
@@ -91,7 +97,7 @@ describe('editing multihttp check', () => {
     await user.click(variablesTabs[0]);
     await user.click(variablesTabs[1]);
 
-    const submitButton = await screen.findByRole('button', { name: 'Save' });
+    const submitButton = await screen.findByText('Save');
     await user.click(submitButton);
 
     const { body } = await read();
@@ -170,7 +176,7 @@ describe('editing multihttp check', () => {
     await user.click(subjects[0]);
     await user.click(screen.getByText('Headers', { selector: `span` }));
 
-    const submitButton = await screen.findByRole('button', { name: 'Save' });
+    const submitButton = await screen.findByText('Save');
     await user.click(submitButton);
 
     const { body } = await read();

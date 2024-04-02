@@ -23,7 +23,6 @@ import { ProbeOptions } from 'components/CheckEditor/ProbeOptions';
 import { FormLayout } from 'components/CheckForm/FormLayout/FormLayout';
 import { CheckFormAlert } from 'components/CheckFormAlert';
 import { CheckUsage } from 'components/CheckUsage';
-import { DocsLink } from 'components/DocsLink';
 import { LabelField } from 'components/LabelField';
 import { TLSConfig } from 'components/TLSConfig';
 
@@ -33,18 +32,13 @@ export const CheckHTTPLayout = () => {
       <FormLayout.Section
         label="General settings"
         fields={[`enabled`, `job`, `target`, `probes`, `frequency`, `timeout`]}
-        supportingContent={
-          <>
-            <CheckUsage />
-            <DocsLink article="probes">Learn more about general settings</DocsLink>
-          </>
-        }
       >
         <CheckEnabled />
         <CheckJobName />
         <CheckTarget checkType={CheckType.HTTP} />
         <ProbeOptions checkType={CheckType.HTTP} />
         <CheckPublishedAdvanceMetrics />
+        <CheckUsage />
       </FormLayout.Section>
       <FormLayout.Section
         label="HTTP settings"
@@ -55,7 +49,6 @@ export const CheckHTTPLayout = () => {
           `settings.http.compression`,
           `settings.http.proxyConnectHeaders`,
         ]}
-        supportingContent={<DocsLink article="probes">Learn more about http settings options</DocsLink>}
       >
         <RequestMethodSelect name="settings.http.method" />
         <RequestBodyTextArea name="settings.http.body" />
@@ -74,7 +67,6 @@ export const CheckHTTPLayout = () => {
       </FormLayout.Section>
       <FormLayout.Section
         label="TLS config"
-        supportingContent={<DocsLink article="probes">Learn more about authentication options</DocsLink>}
         fields={[
           `settings.http.tlsConfig.caCert`,
           `settings.http.tlsConfig.clientCert`,
@@ -93,14 +85,7 @@ export const CheckHTTPLayout = () => {
         <HttpCheckBasicAuthorization />
       </FormLayout.Section>
       <FormLayout.Section
-        label="TLS config"
-        supportingContent={<DocsLink article="probes">Learn more about TLS config options</DocsLink>}
-      >
-        <TLSConfig checkType={CheckType.HTTP} />
-      </FormLayout.Section>
-      <FormLayout.Section
         label="Validation"
-        supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
         fields={[`settings.http.validStatusCodes`, `settings.http.validHTTPVersions`, `settings.http.sslOptions`]}
       >
         <HttpCheckValidStatusCodes />
@@ -110,7 +95,6 @@ export const CheckHTTPLayout = () => {
       </FormLayout.Section>
       <FormLayout.Section
         label="Advanced options"
-        supportingContent={<DocsLink article="probes">Learn more about advanced options</DocsLink>}
         fields={[
           `labels`,
           `settings.http.ipVersion`,
@@ -123,15 +107,7 @@ export const CheckHTTPLayout = () => {
         <HttpCheckFollowRedirects />
         <HttpCheckCacheBuster />
       </FormLayout.Section>
-      <FormLayout.Section
-        label="Alerting"
-        fields={[`alertSensitivity`]}
-        supportingContent={
-          <>
-            <DocsLink article="probes">Learn more about alerting sensitivity settings.</DocsLink>
-          </>
-        }
-      >
+      <FormLayout.Section label="Alerting" fields={[`alertSensitivity`]}>
         <CheckFormAlert />
       </FormLayout.Section>
     </FormLayout>

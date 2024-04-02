@@ -6,14 +6,10 @@ import { Field, Input } from '@grafana/ui';
 import { CheckFormValues, CheckType } from 'types';
 import { hasRole } from 'utils';
 import { validateFrequency, validateProbes, validateTimeout } from 'validation';
-import { BestPracticeID } from 'contexts/BestPractice/bestPractice.types';
-import { BestPracticeAlert } from 'contexts/BestPractice/BestPracticeAlert';
 import { useProbes } from 'data/useProbes';
-import { useCheckFormBestPractice } from 'hooks/useCheckFormBestPractice';
 import { SliderInput } from 'components/SliderInput';
 import { Subheader } from 'components/Subheader';
 
-import { getCheckFromFormValues } from './checkFormTransformations';
 import CheckProbes from './CheckProbes';
 
 interface Props {
@@ -21,22 +17,22 @@ interface Props {
 }
 
 function getFrequencyBounds(checkType: CheckType) {
+  const oneHour = 60 * 60;
   if (checkType === CheckType.Traceroute) {
     return {
-      minFrequency: 60.0,
-      maxFrequency: 240.0,
-      defaultFrequency: 120.0,
+      minFrequency: 120.0,
+      maxFrequency: oneHour,
     };
   }
-  if (checkType === CheckType.MULTI_HTTP) {
+  if (checkType === CheckType.MULTI_HTTP || checkType === CheckType.Scripted) {
     return {
       minFrequency: 60.0,
-      maxFrequency: 120.0,
+      maxFrequency: oneHour,
     };
   }
   return {
     minFrequency: 10.0,
-    maxFrequency: 120.0,
+    maxFrequency: oneHour,
   };
 }
 
@@ -47,40 +43,28 @@ function getTimeoutBounds(checkType: CheckType) {
       maxTimeout: 30.0,
     };
   }
-  if (checkType === CheckType.MULTI_HTTP) {
-    return {
-      minTimeout: 1.0,
-      maxTimeout: 30.0,
-    };
-  }
-  if (checkType === CheckType.Scripted) {
+  if (checkType === CheckType.Scripted || checkType === CheckType.MULTI_HTTP) {
     return {
       minTimeout: 5.0,
-      maxTimeout: 30.0,
+      maxTimeout: 60.0,
     };
   }
   return {
     minTimeout: 1.0,
-    maxTimeout: 10.0,
+    maxTimeout: 60.0,
   };
 }
 
 export const ProbeOptions = ({ checkType }: Props) => {
-  const { validate } = useCheckFormBestPractice();
   const { data: probes = [] } = useProbes();
   const {
     control,
     formState: { errors },
-    register,
-    getValues,
-    setValue,
   } = useFormContext<CheckFormValues>();
   const isTraceroute = checkType === CheckType.Traceroute;
   const { minFrequency, maxFrequency } = getFrequencyBounds(checkType);
   const { minTimeout, maxTimeout } = getTimeoutBounds(checkType);
   const isEditor = hasRole(OrgRole.Editor);
-  const { ref: refFreq, ...fieldFrequency } = register('frequency', { valueAsNumber: true });
-  const { ref: refTimeout, ...fieldTimeout } = register('timeout', { valueAsNumber: true });
 
   return (
     <div>
@@ -90,27 +74,17 @@ export const ProbeOptions = ({ checkType }: Props) => {
         control={control}
         name="probes"
         rules={{ validate: validateProbes }}
-        render={({ field }) => {
-          const { onChange, ref, ...rest } = field;
-          const handleChange = (probes: number[]) => {
-            onChange(probes);
-            validate(getCheckFromFormValues({ ...getValues(), probes }), false);
-          };
-
-          return (
-            <CheckProbes
-              {...rest}
-              onChange={handleChange}
-              probes={field.value}
-              availableProbes={probes}
-              isEditor={isEditor}
-              invalid={Boolean(errors.probes)}
-              error={errors.probes?.message}
-            />
-          );
-        }}
+        render={({ field }) => (
+          <CheckProbes
+            {...field}
+            probes={field.value}
+            availableProbes={probes}
+            isEditor={isEditor}
+            invalid={Boolean(errors.probes)}
+            error={errors.probes?.message}
+          />
+        )}
       />
-      <BestPracticeAlert id={BestPracticeID.MORE_THAN_ONE_PROBE} />
       <Field
         label="Frequency"
         description="How frequently the check should run."
@@ -118,24 +92,12 @@ export const ProbeOptions = ({ checkType }: Props) => {
         invalid={Boolean(errors.frequency)}
         error={errors.frequency?.message}
       >
-        {checkType === CheckType.Traceroute || checkType === CheckType.Scripted ? (
-          // This is just a placeholder for now, the frequency for traceroute checks is hardcoded in the submit
-          <Input value={120} prefix="Every" suffix="seconds" width={20} readOnly />
-        ) : (
-          <SliderInput
-            validate={(value) => validateFrequency(value, checkType)}
-            prefixLabel={'Every'}
-            suffixLabel={'seconds'}
-            {...fieldFrequency}
-            defaultValue={getValues('frequency')}
-            onChange={(number) => {
-              validateFrequency(number, checkType);
-              setValue(`frequency`, number);
-            }}
-            min={minFrequency}
-            max={maxFrequency}
-          />
-        )}
+        <SliderInput
+          validate={(value) => validateFrequency(value, maxFrequency)}
+          name="frequency"
+          min={minFrequency}
+          max={maxFrequency}
+        />
       </Field>
       <Field
         label="Timeout"
@@ -149,18 +111,11 @@ export const ProbeOptions = ({ checkType }: Props) => {
           <Input value={30} prefix="Every" suffix="seconds" width={20} />
         ) : (
           <SliderInput
-            validate={(value) => validateTimeout(value, checkType)}
-            step={0.5}
-            suffixLabel="seconds"
-            prefixLabel="After"
-            {...fieldTimeout}
-            defaultValue={getValues('timeout')}
-            onChange={(number) => {
-              validateTimeout(number, checkType);
-              setValue(`frequency`, number);
-            }}
+            name="timeout"
+            validate={(value) => validateTimeout(value, maxTimeout, minTimeout)}
             max={maxTimeout}
             min={minTimeout}
+            step={1}
           />
         )}
       </Field>

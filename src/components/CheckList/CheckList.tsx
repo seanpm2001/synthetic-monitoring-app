@@ -16,7 +16,7 @@ import {
 } from 'types';
 import { MetricCheckSuccess, Time } from 'datasource/responses.types';
 import { useSuspenseChecks } from 'data/useChecks';
-import { useChecksReachabilitySuccessRate, useChecksUptimeSuccessRate } from 'data/useSuccessRates';
+import { useChecksReachabilitySuccessRate } from 'data/useSuccessRates';
 import { findCheckinMetrics } from 'data/utils';
 import { useFeatureFlag } from 'hooks/useFeatureFlag';
 import { defaultFilters, getDefaultFilters } from 'components/CheckFilters';
@@ -59,7 +59,6 @@ type CheckListContentProps = {
 
 const CheckListContent = ({ onChangeViewType, viewType }: CheckListContentProps) => {
   const { data: checks } = useSuspenseChecks();
-  const { data: uptimeSuccessRates = [] } = useChecksUptimeSuccessRate();
   const { data: reachabilitySuccessRates = [] } = useChecksReachabilitySuccessRate();
   const [checkFilters, setCheckFilters] = useState<CheckFiltersType>(getDefaultFilters());
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,51 +69,57 @@ const CheckListContent = ({ onChangeViewType, viewType }: CheckListContentProps)
   const CHECKS_PER_PAGE = viewType === CheckListViewType.Card ? CHECKS_PER_PAGE_CARD : CHECKS_PER_PAGE_LIST;
 
   const filteredChecks = filterChecks(checks, checkFilters);
-  const sortedChecks = sortChecks(filteredChecks, sortType, uptimeSuccessRates, reachabilitySuccessRates);
+  const sortedChecks = sortChecks(filteredChecks, sortType, reachabilitySuccessRates);
   const currentPageChecks = filteredChecks.slice((currentPage - 1) * CHECKS_PER_PAGE, currentPage * CHECKS_PER_PAGE);
 
   const isAllSelected = selectedCheckIds.size === filteredChecks.length;
   const totalPages = Math.ceil(filteredChecks.length / CHECKS_PER_PAGE);
 
+  const handleFilterChange = (filters: CheckFiltersType) => {
+    setCheckFilters((cf) => ({
+      ...cf,
+      ...filters,
+    }));
+    setCurrentPage(1);
+    localStorage.setItem('checkFilters', JSON.stringify(filters));
+
+    setSelectedChecksIds((current) => {
+      const filteredChecks = filterChecks(checks, filters);
+      const alreadySelectedChecks = filteredChecks.filter((check) => current.has(check.id!)).map((check) => check.id!);
+      return new Set(alreadySelectedChecks);
+    });
+  };
+
   const handleResetFilters = () => {
-    setCheckFilters(defaultFilters);
+    handleFilterChange(defaultFilters);
     localStorage.removeItem('checkFilters');
   };
 
   const handleLabelSelect = (label: Label) => {
-    setCheckFilters((cf) => {
-      const updated = {
-        ...cf,
-        labels: Array.from(new Set([...cf.labels, `${label.name}: ${label.value}`])),
-      };
-      localStorage.setItem('checkFilters', JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentPage(1);
+    const updated = {
+      ...checkFilters,
+      labels: Array.from(new Set([...checkFilters.labels, `${label.name}: ${label.value}`])),
+    };
+
+    handleFilterChange(updated);
   };
 
   const handleTypeSelect = (checkType: CheckType) => {
-    setCheckFilters((cf) => {
-      const updated = { ...cf, type: checkType };
-      localStorage.setItem('checkFilters', JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentPage(1);
+    const updated = { ...checkFilters, type: checkType };
+
+    handleFilterChange(updated);
   };
 
   const handleStatusSelect = (enabled: boolean) => {
     const status = enabled ? CheckEnabledStatus.Enabled : CheckEnabledStatus.Disabled;
     const option = CHECK_LIST_STATUS_OPTIONS.find(({ value }) => value === status);
+
     if (option) {
-      setCheckFilters((cf) => {
-        const updated = {
-          ...cf,
-          status: option,
-        };
-        localStorage.setItem('checkFilters', JSON.stringify(updated));
-        return updated;
-      });
-      setCurrentPage(1);
+      const updated = {
+        ...checkFilters,
+        status: option,
+      };
+      handleFilterChange(updated);
     }
   };
 
@@ -124,6 +129,7 @@ const CheckListContent = ({ onChangeViewType, viewType }: CheckListContentProps)
       return;
     }
     selectedCheckIds.delete(checkId);
+
     setSelectedChecksIds(new Set(selectedCheckIds));
   };
 
@@ -165,7 +171,7 @@ const CheckListContent = ({ onChangeViewType, viewType }: CheckListContentProps)
           checkFilters={checkFilters}
           currentPageChecks={currentPageChecks}
           onChangeView={handleChangeViewType}
-          onFilterChange={setCheckFilters}
+          onFilterChange={handleFilterChange}
           onSelectAll={handleSelectAll}
           onSort={updateSortMethod}
           onResetFilters={handleResetFilters}
@@ -224,12 +230,7 @@ type MetricCheckSuccessParsed = MetricCheckSuccess & {
   value: [Time, number];
 };
 
-function sortChecks(
-  checks: Check[],
-  sortType: CheckSort,
-  uptimeSuccessRates: MetricCheckSuccessParsed[],
-  reachabilitySuccessRates: MetricCheckSuccessParsed[]
-) {
+function sortChecks(checks: Check[], sortType: CheckSort, reachabilitySuccessRates: MetricCheckSuccessParsed[]) {
   if (sortType === CheckSort.AToZ) {
     return checks.sort((a, b) => a.job.localeCompare(b.job));
   }
@@ -248,21 +249,6 @@ function sortChecks(
   if (sortType === CheckSort.ReachabilityDesc) {
     return checks.sort((a, b) => {
       const [sortA, sortB] = getMetricValues(a, b, reachabilitySuccessRates);
-
-      return sortA - sortB;
-    });
-  }
-
-  if (sortType === CheckSort.UptimeAsc) {
-    return checks.sort((a, b) => {
-      const [sortA, sortB] = getMetricValues(a, b, uptimeSuccessRates);
-      return sortB - sortA;
-    });
-  }
-
-  if (sortType === CheckSort.UptimeDesc) {
-    return checks.sort((a, b) => {
-      const [sortA, sortB] = getMetricValues(a, b, uptimeSuccessRates);
 
       return sortA - sortB;
     });
